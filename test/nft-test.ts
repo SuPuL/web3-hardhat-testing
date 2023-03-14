@@ -3,35 +3,100 @@ import hre from "hardhat";
 import { Contract } from "@ethersproject/contracts";
 
 describe("NFT Contract", () => {
-  const ADMIN = "0x1234567890123456789012345678901234567890";
-  const MINTER = "0x2345678901234567890123456789012345678901";
-  const AIRDROP_MANAGER = "0x3456789012345678901234567890123456789012";
-
   let nft: Contract;
+  let nftFactory: Contract;
+  let nftRepository: Contract;
 
   beforeEach(async () => {
-    const [owner] = await hre.ethers.getSigners();
+    const NFTRepository = await hre.ethers.getContractFactory("NFTRepository");
+    nftRepository = await NFTRepository.deploy();
+    await nftRepository.deployed();
+
+    // deploy traits library
+    const Traits = await hre.ethers.getContractFactory("Traits");
+    const traits = await Traits.deploy();
+    await traits.deployed();
+
+    const NFTDescriptor = await hre.ethers.getContractFactory("NFTDescriptor", {
+      libraries: { Traits: traits.address },
+    });
+    const nftDescriptor = await NFTDescriptor.deploy(nftRepository.address);
+    await nftDescriptor.deployed();
 
     const NFT = await hre.ethers.getContractFactory("NFT");
-    const nft = await NFT.deploy();
+    nft = await NFT.deploy(nftRepository.address, nftDescriptor.address);
     await nft.deployed();
-    await nft.grantRole(0, ADMIN);
-    await nft.grantRole(1, MINTER);
-    await nft.grantRole(2, AIRDROP_MANAGER);
+
+    await nftRepository.grantRole(
+      hre.ethers.utils.id("FACTORY_PRODUCER_ROLE"),
+      nft.address
+    );
+
+    const NFTFactory = await hre.ethers.getContractFactory("MockNFTFactory");
+    nftFactory = await NFTFactory.deploy();
+    await nftFactory.deployed();
   });
 
-  it("grants the correct roles", async () => {
-    const actualAdmin = await nft.getRoleMember(0);
-    const actualMinter = await nft.getRoleMember(1);
-    const actualAirdropManager = await nft.getRoleMember(2);
+  it("works", async () => {
+    const [owner] = await hre.ethers.getSigners();
 
-    expect(actualAdmin).to.equal(ADMIN);
-    expect(actualMinter).to.equal(MINTER);
-    expect(actualAirdropManager).to.equal(AIRDROP_MANAGER);
-  });
+    await nftRepository.addEdition({
+      seriesId: 1,
+      editionId: 1,
+      seriesName: hre.ethers.utils.formatBytes32String("Generation 1"),
+      editionName: hre.ethers.utils.formatBytes32String("Edition 1"),
+      allowedTypes: [
+        {
+          group: hre.ethers.utils.formatBytes32String("Monster"),
+          name: hre.ethers.utils.formatBytes32String("Unidonkey"),
+          description: hre.ethers.utils.formatBytes32String("Test Description"),
+          traitTypes: [
+            {
+              traitType: hre.ethers.utils.formatBytes32String("Color"),
+              displayType: hre.ethers.utils.formatBytes32String(""),
+              traits: [
+                { name: hre.ethers.utils.formatBytes32String("Red") },
+                { name: hre.ethers.utils.formatBytes32String("Blue") },
+                { name: hre.ethers.utils.formatBytes32String("Green") },
+              ],
+            },
+            {
+              traitType: hre.ethers.utils.formatBytes32String("Horn"),
+              displayType: hre.ethers.utils.formatBytes32String(""),
+              traits: [
+                { name: hre.ethers.utils.formatBytes32String("Golden Horn") },
+                { name: hre.ethers.utils.formatBytes32String("Silver Edge") },
+                { name: hre.ethers.utils.formatBytes32String("Spiral Horn") },
+              ],
+            },
+          ],
+        },
+      ],
+    });
 
-  it("only allows the admin to grant roles", async () => {
-    await expect(nft.methods.grantRole(0, MINTER).send({ from: MINTER })).to.be
-      .reverted;
+    await nftRepository.setFactory(1, 1, nftFactory.address);
+
+    await nft.airdrop(
+      owner.address,
+      1,
+      1,
+      hre.ethers.utils.formatBytes32String("Unidonkey"),
+      [
+        {
+          traitType: hre.ethers.utils.formatBytes32String("Color"),
+          traitName: hre.ethers.utils.formatBytes32String("Red"),
+        },
+        {
+          traitType: hre.ethers.utils.formatBytes32String("Horn"),
+          traitName: hre.ethers.utils.formatBytes32String("Golden Horn"),
+        },
+      ]
+    );
+
+    const tokenURI = await nft.tokenURI(2);
+    console.log(`token Uri ==================`, tokenURI);
+    // // decode base64 string
+    // const decoded = Buffer.from(tokenURI.split(",")[1], "base64").toString();
+    // console.log(decoded);
   });
 });

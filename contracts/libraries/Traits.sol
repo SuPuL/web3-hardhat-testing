@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: none
 pragma solidity ^0.8.17;
 
-import "./NFTInstance.sol";
-import "./NFTSchema.sol";
-
 library Traits {
   struct Trait {
     bytes32 traitType;
@@ -65,7 +62,7 @@ library Traits {
     return string(abi.encodePacked("[", output, "]"));
   }
 
-  function encode(Trait calldata trait) internal pure returns (string memory) {
+  function encode(Trait calldata trait) public pure returns (string memory) {
     if (trait.displayType == "") {
       return encode(trait.traitType, trait.traitName);
     }
@@ -77,7 +74,7 @@ library Traits {
     bytes32 traitType,
     bytes calldata traitName,
     bytes32 displayType
-  ) internal pure returns (string memory) {
+  ) public pure returns (string memory) {
     return
       string(
         abi.encodePacked(
@@ -95,7 +92,7 @@ library Traits {
   function encode(
     bytes32 traitType,
     bytes calldata traitName
-  ) internal pure returns (string memory) {
+  ) public pure returns (string memory) {
     return
       string(
         abi.encodePacked(

@@ -31,10 +31,13 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
   address nftDescriptorAddress;
   address nftRepository;
 
-  constructor() ERC721("MYNAME", "MYN") {
+  constructor(address _nftRepository, address _nftDescriptor) ERC721("MYNAME", "MYN") {
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     _grantRole(MINTER_ROLE, msg.sender);
     _grantRole(AIRDROP_MANAGER_ROLE, msg.sender);
+    
+    nftRepository = _nftRepository;
+    nftDescriptorAddress = _nftDescriptor;
   }
 
   /// @dev This is not meant to be a public minting function, but rather a function that can be called by other contracts.

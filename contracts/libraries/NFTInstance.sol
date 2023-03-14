@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: none
 pragma solidity ^0.8.17;
 
-import "./NFTSchema.sol";
-
 struct NFTTrait {
   bytes32 traitType;
   bytes32 traitName;

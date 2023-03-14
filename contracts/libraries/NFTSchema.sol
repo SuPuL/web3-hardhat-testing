@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: none
 pragma solidity ^0.8.17;
 
-import "./Traits.sol";
-
 /**
  * @dev NFTTraitDefintion is a trait that can be used in a NFTType. Its part of trait group. We might add more properties like porbality later on.
  */

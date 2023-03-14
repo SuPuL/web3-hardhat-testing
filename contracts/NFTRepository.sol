@@ -17,10 +17,16 @@ contract NFTRepository is Ownable, AccessControl, INFTRepository {
   mapping(uint16 => mapping(uint8 => INFTFactory)) private factories;
   mapping(uint16 => mapping(uint8 => NFTEdition)) private editions;
 
+  constructor() {
+    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    _grantRole(FACTORY_MANAGER_ROLE, msg.sender);
+    _grantRole(FACTORY_PRODUCER_ROLE, msg.sender);
+  }
+
   modifier onlyFactoryManager() {
     require(
       hasRole(FACTORY_MANAGER_ROLE, msg.sender),
-      "NFT: caller does not have the required role"
+      "NFTRepository: caller does not have the factory manager role"
     );
     _;
   }
@@ -28,7 +34,7 @@ contract NFTRepository is Ownable, AccessControl, INFTRepository {
   modifier onlyFactoryProducer() {
     require(
       hasRole(FACTORY_PRODUCER_ROLE, msg.sender),
-      "NFT: caller does not have the required role"
+      "NFTRepository: caller does not have the factory producer role"
     );
     _;
   }
@@ -97,6 +103,20 @@ contract NFTRepository is Ownable, AccessControl, INFTRepository {
     );
 
     editions[edition.seriesId][edition.editionId] = edition;
+  }
+
+  function setFactory(
+    uint16 seriesId,
+    uint8 editionId,
+    INFTFactory factory
+  ) external onlyFactoryManager {
+    require(
+      editions[seriesId][editionId].seriesId == seriesId &&
+        editions[seriesId][editionId].editionId == editionId,
+      "NFTRepository: Series or edition is not available"
+    );
+
+    factories[seriesId][editionId] = factory;
   }
 
   function _factory(
