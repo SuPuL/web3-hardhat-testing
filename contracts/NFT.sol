@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: none
 // NFB Contracts v0.0.2
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/INFTDescriptor.sol";
-import "./interfaces/INFTFactory.sol";
 import "./interfaces/INFTMinter.sol";
+import "./interfaces/INFTRepository.sol";
 
+/**
+ * @dev Nfts should be split this in a static and a dynamic part.
+ * The static part that is the same for most types can be stored in one mapping and the individual part in another mapping.
+ */
 contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
   bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
   bytes32 public constant AIRDROP_MANAGER_ROLE =
@@ -25,8 +29,7 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
 
   uint256 private nextTokenId = 1;
   address nftDescriptorAddress;
-  /// @dev This contract does not care about token generatrion, instead it delegates that to a contract per series and edition.
-  mapping(uint16 => mapping(uint8 => INFTFactory)) public factories;
+  address nftRepository;
 
   constructor() ERC721("MYNAME", "MYN") {
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -41,12 +44,10 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
     uint16 seriesId,
     uint8 editionId
   ) external override onlyRole(MINTER_ROLE) returns (uint256) {
-    require(
-      factories[seriesId][editionId] != INFTFactory(address(0)),
-      "NFT: Series or edition is not available"
+    NFTInstance memory instance = INFTRepository(nftRepository).craeteRandom(
+      seriesId,
+      editionId
     );
-
-    NFTInstance memory instance = factories[seriesId][editionId].craeteRandom();
     uint256 tokenId = _mintInstance(to, instance);
     emit Minted(to, seriesId, editionId, tokenId);
 
@@ -59,19 +60,14 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
     address to,
     uint16 seriesId,
     uint8 editionId,
-    uint16 typeId,
-    NFTTraitMapping[] calldata traitIdsToValues
+    bytes32 typeName,
+    NFTTrait[] calldata traits
   ) external override onlyRole(AIRDROP_MANAGER_ROLE) returns (uint256) {
-    require(
-      factories[seriesId][editionId] != INFTFactory(address(0)),
-      "NFT: Series or edition is not available"
-    );
-
-    NFTInstance memory instance = factories[seriesId][editionId].create(
+    NFTInstance memory instance = INFTRepository(nftRepository).create(
       seriesId,
       editionId,
-      typeId,
-      traitIdsToValues
+      typeName,
+      traits
     );
     uint256 tokenId = _mintInstance(to, instance);
     emit Airdroped(to, seriesId, editionId, tokenId);
@@ -91,7 +87,7 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
     string memory baseData = super.tokenURI(tokenId);
     NFTInstance memory instance = abi.decode(bytes(baseData), (NFTInstance));
 
-    return INFTDescriptor(nftDescriptorAddress).tokenURI(instance);
+    return INFTDescriptor(nftDescriptorAddress).tokenURI(tokenId, instance);
   }
 
   // The following functions are overrides required by Solidity.

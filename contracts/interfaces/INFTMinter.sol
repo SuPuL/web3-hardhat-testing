@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "../libraries/NFTSchema.sol";
 import "../libraries/NFTInstance.sol";
@@ -23,7 +23,7 @@ interface INFTMinter {
     address to,
     uint16 seriesId,
     uint8 editionId,
-    uint16 typeId,
-    NFTTraitMapping[] calldata traitIdsToValues
+    bytes32 typeName,
+    NFTTrait[] calldata traits
   ) external returns (uint256 tokenId);
 }
