@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/INFTDescriptor.sol";
-import "./interfaces/INFTMinter.sol";
 import "./interfaces/INFTRepository.sol";
+import "./interfaces/INFTMinter.sol";
+import "hardhat/console.sol";
 
 /**
  * @dev Nfts should be split this in a static and a dynamic part.
@@ -27,17 +28,24 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
     _;
   }
 
-  uint256 private nextTokenId = 1;
-  address nftDescriptorAddress;
-  address nftRepository;
+  mapping(uint256 => bytes) private storageInfos;
 
-  constructor(address _nftRepository, address _nftDescriptor) ERC721("MYNAME", "MYN") {
+  uint256 private nextTokenId = 0;
+  INFTDescriptor nftDescriptor;
+  INFTRepository nftRepository;
+
+  constructor(
+    string memory _name,
+    string memory _symbol,
+    INFTRepository _nftRepository,
+    INFTDescriptor _nftDescriptor
+  ) ERC721(_name, _symbol) {
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     _grantRole(MINTER_ROLE, msg.sender);
     _grantRole(AIRDROP_MANAGER_ROLE, msg.sender);
-    
+
     nftRepository = _nftRepository;
-    nftDescriptorAddress = _nftDescriptor;
+    nftDescriptor = _nftDescriptor;
   }
 
   /// @dev This is not meant to be a public minting function, but rather a function that can be called by other contracts.
@@ -47,11 +55,11 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
     uint16 seriesId,
     uint8 editionId
   ) external override onlyRole(MINTER_ROLE) returns (uint256) {
-    NFTInstance memory instance = INFTRepository(nftRepository).craeteRandom(
+    NFTStorageInfo memory storageInfo = nftRepository.craeteRandom(
       seriesId,
       editionId
     );
-    uint256 tokenId = _mintInstance(to, instance);
+    uint256 tokenId = _mintStorageInfo(to, storageInfo);
     emit Minted(to, seriesId, editionId, tokenId);
 
     return tokenId;
@@ -63,34 +71,35 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
     address to,
     uint16 seriesId,
     uint8 editionId,
-    bytes32 typeName,
-    NFTTrait[] calldata traits
+    uint16 typeId,
+    NFTAttributeValue[] calldata values
   ) external override onlyRole(AIRDROP_MANAGER_ROLE) returns (uint256) {
-    NFTInstance memory instance = INFTRepository(nftRepository).create(
+    NFTStorageInfo memory storageInfo = nftRepository.create(
       seriesId,
       editionId,
-      typeName,
-      traits
+      typeId,
+      values
     );
-    uint256 tokenId = _mintInstance(to, instance);
+    uint256 tokenId = _mintStorageInfo(to, storageInfo);
     emit Airdroped(to, seriesId, editionId, tokenId);
-
     return tokenId;
   }
 
   function setNFTDescriptorAddress(
     address _nftDescriptorAddress
   ) public onlyOwner {
-    nftDescriptorAddress = _nftDescriptorAddress;
+    nftDescriptor = INFTDescriptor(_nftDescriptorAddress);
   }
 
   function tokenURI(
     uint256 tokenId
   ) public view virtual override returns (string memory) {
-    string memory baseData = super.tokenURI(tokenId);
-    NFTInstance memory instance = abi.decode(bytes(baseData), (NFTInstance));
+    require(storageInfos[tokenId].length > 0, "NFT: token id not found");
+    bytes memory baseData = storageInfos[tokenId];
+    NFTStorageInfo memory storageInfo = abi.decode(baseData, (NFTStorageInfo));
+    NFTInstance memory instance = nftRepository.enrich(tokenId, storageInfo);
 
-    return INFTDescriptor(nftDescriptorAddress).tokenURI(tokenId, instance);
+    return nftDescriptor.tokenURI(tokenId, instance);
   }
 
   // The following functions are overrides required by Solidity.
@@ -103,14 +112,16 @@ contract NFT is Ownable, AccessControl, ERC721, INFTMinter {
 
   // private methods
 
-  // @dev Mint the new instance and increase the token id.
-  function _mintInstance(
+  /**
+   *  @dev Mint the new storageInfo and increase the token id.
+   */
+  function _mintStorageInfo(
     address to,
-    NFTInstance memory instance
+    NFTStorageInfo memory storageInfo
   ) internal onlyMinterOrAirdropManager returns (uint256) {
-    bytes memory data = abi.encode(instance);
     nextTokenId++;
-    _safeMint(to, nextTokenId, data);
+    _safeMint(to, nextTokenId);
+    storageInfos[nextTokenId] = abi.encode(storageInfo);
 
     return nextTokenId;
   }

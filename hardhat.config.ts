@@ -1,8 +1,6 @@
 import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
 import "hardhat-abi-exporter";
-import "hardhat-deploy";
-import "hardhat-deploy-ethers";
 import "hardhat-gas-reporter";
 import "hardhat-log-remover";
 import "hardhat-output-validator";
@@ -18,6 +16,7 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 1000,
       },
+      viaIR: true,
     },
   },
   gasReporter: {
@@ -30,23 +29,16 @@ const config: HardhatUserConfig = {
   networks: addForkConfiguration({
     hardhat: {
       initialBaseFeePerGas: 0, // to fix : https://github.com/sc-forks/solidity-coverage/issues/652, see https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136
-      tags: ["test", "local"],
     },
     localhost: {
       url: node_url("localhost"),
       accounts: accounts(),
-      tags: ["test", "local"],
     },
     goerli: {
       url: node_url("goerli"),
       accounts: accounts("goerli"),
-      tags: ["staging"],
     },
   }),
-  namedAccounts: {
-    deployer: 0,
-    simpleERC20Beneficiary: 1,
-  },
 };
 
 export default config;
