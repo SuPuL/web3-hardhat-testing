@@ -64,7 +64,7 @@ struct NFTDescription {
  * Individual attributes might override the static traits.
  */
 struct NFTStorageInfo {
-  uint64 typeSchemaId;
+  uint40 typeSchemaId;
   NFTTrait[] individualTraits;
   // @todo just store a hash and store the real values in the repository.
   NFTAttributeValue[] values;

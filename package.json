@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/SuPuL/web3-hardhat-testing#readme",
   "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@types/chai": "^4.3.4",
     "@types/mocha": "^10.0.1",

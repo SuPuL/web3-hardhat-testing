@@ -19,6 +19,7 @@ This project is just a playground to get familiar with different aspects of ERC-
 - NFT store
   - ✅ only store NFT individual data per token
   - store static data per type
+  - optimize storage handling for statics
   - ✅ add birthday
 - ✅ NFT descriptor tokenUri generation
   - ✅ get assets and static data from type store

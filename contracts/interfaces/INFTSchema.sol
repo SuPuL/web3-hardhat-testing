@@ -41,19 +41,43 @@ interface INFTSchema {
    */
   event SchemaSealed();
 
-  function addEdition(
-    NFTEdition calldata edition
-  ) external returns (uint24 schemaId);
+  /**
+   * @dev Emitted after the schema was sealed. No more changes are allowed.
+   */
+  event SchemaUnsealed();
+
+  function addEdition(NFTEdition calldata edition) external returns (uint24);
+
+  function getEdition(
+    uint16 seriesId,
+    uint8 editionId
+  ) external view returns (NFTEdition memory);
 
   function addType(
     uint16 seriesId,
     uint8 editionId,
     NFTType calldata nftType
-  ) external returns (uint64 typeSchemaId);
+  ) external returns (uint40);
+
+  function getType(
+    uint16 seriesId,
+    uint8 editionId,
+    uint16 typeId
+  ) external view returns (NFTType memory);
 
   function addAttribute(NFTAttribute calldata attribute) external;
 
   function addAttributes(NFTAttribute[] calldata newAttributes) external;
+
+  function getAttribute(
+    uint16 attributeId
+  ) external view returns (NFTAttribute memory);
+
+  function getAttributes(
+    uint16 seriesId,
+    uint8 editionId,
+    uint16 typeId
+  ) external view returns (NFTAttribute[] memory);
 
   function assignAttributeToType(
     uint16 seriesId,
@@ -84,4 +108,6 @@ interface INFTSchema {
   ) external view returns (NFTDescription memory instance);
 
   function seal() external;
+
+  function unseal() external;
 }

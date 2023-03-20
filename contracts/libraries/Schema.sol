@@ -23,7 +23,7 @@ library Schema {
   function getSchemaTypeId(
     uint24 schemaId,
     uint16 typeId
-  ) public pure returns (uint64 schemaTypeId) {
+  ) public pure returns (uint40 schemaTypeId) {
     // Join all three ids to one uint
     schemaTypeId = (schemaId << 16) | typeId;
   }
@@ -32,7 +32,7 @@ library Schema {
     uint16 seriesId,
     uint8 editionId,
     uint16 typeId
-  ) public pure returns (uint64 schemaTypeId) {
+  ) public pure returns (uint40 schemaTypeId) {
     // Shift the uint16 value left by 8 bits to make room for the uint8 value
     // Add the uint8 value to the uint24 value
     // Join all three ids to one uint
@@ -40,7 +40,7 @@ library Schema {
   }
 
   function splitSchemaTypeId(
-    uint64 schemaTypeId
+    uint40 schemaTypeId
   ) public pure returns (uint16 seriesId, uint8 editionId, uint16 typeId) {
     // Mask the top 8 bits of the uint24 value to get the uint8 value
     typeId = uint16(schemaTypeId & 0xFFFF);

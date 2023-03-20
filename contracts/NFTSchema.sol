@@ -7,21 +7,34 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/INFTSchema.sol";
 import "./libraries/Schema.sol";
 import "./libraries/Types.sol";
+import "./libraries/Set.sol";
 import "hardhat/console.sol";
 
 contract NFTSchema is Ownable, AccessControl, INFTSchema {
+  using Set for Set.ByInt16;
+  using Set for Set.ByIntString;
+
   bytes32 public constant SCHEMA_MANAGER_ROLE =
     keccak256("SCHEMA_MANAGER_ROLE");
 
   bool internal schemaIsSealed;
 
-  mapping(uint24 => NFTEdition) private editions;
-  mapping(uint64 => NFTType) private schemaTypes;
-  mapping(uint16 => NFTAttribute) private attributes;
-  // as we wanne reuse attributes we need a lookup which attributes are allwed for a type
-  mapping(uint64 => mapping(uint16 => bool)) private typeAttributeLookup;
+  // schemaId to edition. Where the schemaId is a combination of seriesId and editionId
+  mapping(uint32 => NFTEdition) editions;
+
+  // schemaTypeId to schema type. Where the schemaTypeId is a combination of seriesId, editionId and typeId
+  mapping(uint40 => NFTType) schemaTypes;
+
+  // Attribute id to attributeØ
+  mapping(uint16 => NFTAttribute) attributes;
+
+  // as we wanne reuse attributes we need a lookup which attributes are allowed for a type
+  // schemaTypeAttributeId lookup to attribute id
+  mapping(uint40 => Set.ByInt16) internal typeAttributeLookup;
+
   // and we need a look for all allowed values of each attribute
-  mapping(uint16 => mapping(string => bool)) private attributeValueLookup;
+  // attribute id to values
+  mapping(uint16 => Set.ByIntString) internal attributeValueLookup;
 
   constructor() {
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -31,13 +44,18 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
   modifier onlySchemaManager() {
     require(
       hasRole(SCHEMA_MANAGER_ROLE, msg.sender),
-      "NFTSchema: caller does not have the schema manager role"
+      "Caller does not have the schema manager role."
     );
     _;
   }
 
   modifier isNotSealed() {
-    require(!schemaIsSealed, "NFTSchema: is selaed and can not be changed");
+    require(!schemaIsSealed, "Schema is sealed and can not be changed.");
+    _;
+  }
+
+  modifier isSealed() {
+    require(schemaIsSealed, "Schema is not sealed.");
     _;
   }
 
@@ -45,16 +63,21 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     NFTEdition calldata edition
   ) external override onlySchemaManager isNotSealed returns (uint24 schemaId) {
     schemaId = Schema.getId(edition.seriesId, edition.editionId);
-
-    console.log("%s %s %s", edition.seriesId, edition.editionId, schemaId);
-
-    require(
-      editions[schemaId].seriesId == 0,
-      "NFTSchema: edition already exists"
-    );
+    require(editions[schemaId].editionId == 0, "Edition already exists.");
     editions[schemaId] = edition;
-
     emit EditionAdded(edition.seriesId, edition.editionId, schemaId);
+  }
+
+  function getEdition(
+    uint16 seriesId,
+    uint8 editionId
+  ) public view returns (NFTEdition memory edition) {
+    uint24 schemaId = Schema.getId(seriesId, editionId);
+    require(
+      editions[schemaId].editionId > 0,
+      "Can't get an edition that doesn't exist."
+    );
+    edition = editions[schemaId];
   }
 
   function addType(
@@ -66,16 +89,25 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     override
     onlySchemaManager
     isNotSealed
-    returns (uint64 typeSchemaId)
+    returns (uint40 typeSchemaId)
   {
     typeSchemaId = Schema.getSchemaTypeId(seriesId, editionId, nftType.typeId);
-    require(
-      schemaTypes[typeSchemaId].typeId == 0,
-      "NFTSchema: type already exists"
-    );
+    require(schemaTypes[typeSchemaId].typeId == 0, "Type already exists.");
     schemaTypes[typeSchemaId] = nftType;
-
     emit TypeAdded(seriesId, editionId, nftType.typeId, typeSchemaId);
+  }
+
+  function getType(
+    uint16 seriesId,
+    uint8 editionId,
+    uint16 typeId
+  ) public view returns (NFTType memory schemaType) {
+    uint40 typeSchemaId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
+    require(
+      schemaTypes[typeSchemaId].typeId > 0,
+      "Can't get a type that doesn't exist."
+    );
+    schemaType = schemaTypes[typeSchemaId];
   }
 
   function addAttribute(NFTAttribute calldata attribute) external override {
@@ -90,11 +122,32 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     }
   }
 
+  function getAttribute(
+    uint16 attributeId
+  ) external view returns (NFTAttribute memory attribute) {
+    require(
+      attributes[attributeId].attributeId > 0,
+      "Can't get a attribute that doesn't exist."
+    );
+    attribute = attributes[attributeId];
+  }
+
   function getAttributes(
     uint16 seriesId,
     uint8 editionId,
     uint16 typeId
-  ) external view returns (NFTAttribute[] memory) {}
+  ) external view returns (NFTAttribute[] memory result) {
+    uint40 typeSchemaId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
+    require(
+      typeAttributeLookup[typeSchemaId].count() > 0,
+      "Can't get attributes for a type that doesn't exist."
+    );
+
+    for (uint i = 0; i < typeAttributeLookup[typeSchemaId].count(); i++) {
+      uint16 attributeId = typeAttributeLookup[typeSchemaId].keyList[i];
+      result[i] = attributes[attributeId];
+    }
+  }
 
   function assignAttributeToType(
     uint16 seriesId,
@@ -122,7 +175,7 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     uint16 typeId,
     NFTAttributeValue[] calldata values
   ) external view returns (bool) {
-    uint64 schemaTypeId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
+    uint40 schemaTypeId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
     if (schemaTypes[schemaTypeId].typeId == 0) {
       return false;
     }
@@ -130,7 +183,9 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     // check if all attributes are allowed for this type
     for (uint16 i = 0; i < values.length; i++) {
       NFTAttributeValue calldata attrValue = values[i];
-      if (!attributeValueLookup[attrValue.attributeId][attrValue.value]) {
+      if (
+        !attributeValueLookup[attrValue.attributeId].exists(attrValue.value)
+      ) {
         return false;
       }
     }
@@ -144,9 +199,9 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     uint16 typeId,
     NFTAttributeValue[] calldata values
   ) external view returns (NFTDescription memory instance) {
-    uint64 schemaTypeId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
-    require(schemaTypes[schemaTypeId].typeId > 0, "NFTSchema: type not found");
-    instance.edition = _getEdition(seriesId, editionId);
+    uint40 schemaTypeId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
+    require(schemaTypes[schemaTypeId].typeId > 0, "Type not found.");
+    instance.edition = getEdition(seriesId, editionId);
     instance.nftType = schemaTypes[schemaTypeId];
     instance.traits = _getTraits(schemaTypeId, values);
   }
@@ -157,17 +212,14 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     emit SchemaSealed();
   }
 
-  function _getEdition(
-    uint16 seriesId,
-    uint8 editionId
-  ) internal view returns (NFTEdition memory schema) {
-    uint24 schemaId = Schema.getId(seriesId, editionId);
-    require(editions[schemaId].editionId > 0, "NFTSchema: schema not found");
-    return editions[schemaId];
+  function unseal() external override onlySchemaManager isSealed {
+    schemaIsSealed = false;
+
+    emit SchemaUnsealed();
   }
 
   function _getTraits(
-    uint64 schemaTypeId,
+    uint40 schemaTypeId,
     NFTAttributeValue[] calldata values
   ) internal view returns (NFTTrait[] memory traits) {
     for (uint16 i = 0; i < values.length; i++) {
@@ -179,21 +231,21 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
       );
     }
 
-    require(values.length == traits.length, "NFTSchema: invalid traits");
+    require(values.length == traits.length, "Some trait is invalid.");
   }
 
   function _getTrait(
-    uint64 schemaTypeId,
+    uint40 schemaTypeId,
     uint16 attributeId,
     string calldata value
   ) internal view returns (NFTTrait memory trait) {
     require(
-      typeAttributeLookup[schemaTypeId][attributeId],
-      "NFTSchema: attribute not allowed for type"
+      typeAttributeLookup[schemaTypeId].exists(attributeId),
+      "Attribute is not allowed for type."
     );
     require(
-      attributeValueLookup[attributeId][value],
-      "NFTSchema: attribute value not allowed"
+      attributes[attributeId].attributeId > 0,
+      "Attribute value not allowed."
     );
 
     trait.displayType = attributes[attributeId].displayType;
@@ -204,13 +256,7 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
   function _addAttribute(
     NFTAttribute calldata attribute
   ) internal onlySchemaManager isNotSealed {
-    console.log("adding attribute");
-    require(
-      attributes[attribute.attributeId].attributeId == 0,
-      "NFTSchema: attribute already exists"
-    );
     attributes[attribute.attributeId] = attribute;
-
     emit AttributeAdded(attribute.attributeId);
   }
 
@@ -220,21 +266,18 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     uint16 typeId,
     uint16 attributeId
   ) internal onlySchemaManager isNotSealed {
-    uint64 typeSchemaId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
-    require(
-      schemaTypes[typeSchemaId].typeId > 0,
-      "NFTSchema: type does not exist"
-    );
+    uint40 typeSchemaId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
+    require(schemaTypes[typeSchemaId].typeId > 0, "Type does not exist");
     require(
       attributes[attributeId].attributeId > 0,
-      "NFTSchema: attribute does not exist"
+      "Attribute does not exist."
     );
 
     NFTAttribute memory attribute = attributes[attributeId];
-    typeAttributeLookup[typeSchemaId][attributeId] = true;
+    typeAttributeLookup[typeSchemaId].insert(attributeId);
     // maybe move to extra method to save gas?
     for (uint i = 0; i < attribute.values.length; i++) {
-      attributeValueLookup[attributeId][attribute.values[i].value] = true;
+      attributeValueLookup[attributeId].insert(attribute.values[i].value);
     }
   }
 }
