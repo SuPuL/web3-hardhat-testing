@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-foundry";
 import "dotenv/config";
 import "hardhat-abi-exporter";
 import "hardhat-gas-reporter";

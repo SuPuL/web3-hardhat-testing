@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test",
+    "test": "npm run test:hardhat && npm run test:foundry",
+    "test:foundry": "forge test --gas-report",
+    "test:hardhat": "hardhat test",
     "coverage": "hardhat coverage",
     "prettier": "prettier --write 'contracts/**/*.sol'",
     "lint": "prettier --list-different 'contracts/**/*.sol'"
@@ -22,6 +24,7 @@
   "homepage": "https://github.com/SuPuL/web3-hardhat-testing#readme",
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
+    "@nomicfoundation/hardhat-foundry": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@types/chai": "^4.3.4",
     "@types/mocha": "^10.0.1",

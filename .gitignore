@@ -27,3 +27,6 @@ yarn-error.log*
 artifacts-dbg/
 contracts-dbg/
 dbg.project.json
+.gas-snapshot
+cache_forge
+out
