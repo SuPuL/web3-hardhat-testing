@@ -8,7 +8,6 @@ import "./interfaces/INFTSchema.sol";
 import "./libraries/Schema.sol";
 import "./libraries/Types.sol";
 import "./libraries/Set.sol";
-import "hardhat/console.sol";
 
 contract NFTSchema is Ownable, AccessControl, INFTSchema {
   using Set for Set.ByInt16;
