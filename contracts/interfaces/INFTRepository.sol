@@ -5,11 +5,6 @@ import "../libraries/Schema.sol";
 import "../libraries/Types.sol";
 
 interface INFTRepository {
-  function craeteRandom(
-    uint16 seriesId,
-    uint8 editionId
-  ) external view returns (NFTStorageInfo memory);
-
   function create(
     uint16 seriesId,
     uint8 editionId,

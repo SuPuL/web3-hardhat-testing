@@ -35,7 +35,7 @@ const type = (typeId: number): Type => ({
   description: faker.lorem.paragraph(2),
 });
 
-describe("INFTSchema", () => {
+describe("NFTSchema", () => {
   let NFTSchema: Contract;
   let owner: Signer;
   let addr1: Signer;
@@ -117,18 +117,7 @@ describe("INFTSchema", () => {
     });
 
     it("Should add a new type for the given edition", async () => {
-      // const { editionId, seriesId } = sampleEdition;
-      // await expect(
-      //   NFTSchema.callStatic.getType(seriesId, editionId, sampleType.typeId)
-      // ).to.be.revertedWith("Can't get a type that doesn't exist.");
-      // await NFTSchema.connect(owner).addType(seriesId, editionId, sampleType);
-      // const newType = await NFTSchema.callStatic.getType(
-      //   seriesId,
-      //   editionId,
-      //   sampleType.typeId
-      // );
-      // console.info(Object.getOwnPropertyNames(newType));
-      // expect(newType).to.own.contains(sampleType);
+      // TODO: Should add a new type for the given edition
     });
   });
 

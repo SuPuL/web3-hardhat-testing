@@ -15,8 +15,12 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
 
   bytes32 public constant SCHEMA_MANAGER_ROLE =
     keccak256("SCHEMA_MANAGER_ROLE");
+  bytes32 public constant SCHEMA_GUARD_ROLE = keccak256("SCHEMA_GUARD_ROLE");
 
+  // Sealing on schema level. If a schema is sealed changes are not allowed within this schema.
   bool internal schemaIsSealed;
+  // Sealed on edition level. If a edition is sealed changes are not allowed within this edition.
+  mapping(uint32 => bool) editionsSealedInfo;
 
   // schemaId to edition. Where the schemaId is a combination of seriesId and editionId
   mapping(uint32 => NFTEdition) editions;
@@ -38,6 +42,7 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
   constructor() {
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     _grantRole(SCHEMA_MANAGER_ROLE, msg.sender);
+    _grantRole(SCHEMA_GUARD_ROLE, msg.sender);
   }
 
   modifier onlySchemaManager() {
@@ -48,19 +53,49 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     _;
   }
 
-  modifier isNotSealed() {
+  modifier onlySchemaGuard() {
+    require(
+      hasRole(SCHEMA_GUARD_ROLE, msg.sender),
+      "Caller does not have the schema guard role."
+    );
+    _;
+  }
+
+  modifier schemaIsNotSealed() {
     require(!schemaIsSealed, "Schema is sealed and can not be changed.");
     _;
   }
 
-  modifier isSealed() {
+  modifier isSchemaSealed() {
     require(schemaIsSealed, "Schema is not sealed.");
+    _;
+  }
+
+  modifier isEditionNotSealed(uint16 seriesId, uint8 editionId) {
+    uint24 schemaId = Schema.getId(seriesId, editionId);
+    require(
+      !editionsSealedInfo[schemaId],
+      "Edition is sealed and can not be changed."
+    );
+    _;
+  }
+
+  modifier isEditionSealed(uint16 seriesId, uint8 editionId) {
+    uint24 schemaId = Schema.getId(seriesId, editionId);
+    require(editionsSealedInfo[schemaId], "Edition is not sealed.");
     _;
   }
 
   function addEdition(
     NFTEdition calldata edition
-  ) external override onlySchemaManager isNotSealed returns (uint24 schemaId) {
+  )
+    external
+    override
+    onlySchemaManager
+    schemaIsNotSealed
+    isEditionNotSealed(edition.seriesId, edition.editionId)
+    returns (uint24 schemaId)
+  {
     schemaId = Schema.getId(edition.seriesId, edition.editionId);
     require(editions[schemaId].editionId == 0, "Edition already exists.");
     editions[schemaId] = edition;
@@ -87,7 +122,8 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     external
     override
     onlySchemaManager
-    isNotSealed
+    schemaIsNotSealed
+    isEditionNotSealed(seriesId, editionId)
     returns (uint40 typeSchemaId)
   {
     typeSchemaId = Schema.getSchemaTypeId(seriesId, editionId, nftType.typeId);
@@ -162,7 +198,13 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     uint8 editionId,
     uint16 typeId,
     uint16[] calldata attributeIds
-  ) external override onlySchemaManager isNotSealed {
+  )
+    external
+    override
+    onlySchemaManager
+    schemaIsNotSealed
+    isEditionNotSealed(seriesId, editionId)
+  {
     for (uint i = 0; i < attributeIds.length; i++) {
       _assignAttributeToType(seriesId, editionId, typeId, attributeIds[i]);
     }
@@ -205,16 +247,36 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     instance.traits = _getTraits(schemaTypeId, values);
   }
 
-  function seal() external override onlySchemaManager isNotSealed {
+  function seal() external override onlySchemaGuard schemaIsNotSealed {
     schemaIsSealed = true;
 
     emit SchemaSealed();
   }
 
-  function unseal() external override onlySchemaManager isSealed {
+  function unseal() external override onlySchemaGuard isSchemaSealed {
     schemaIsSealed = false;
 
     emit SchemaUnsealed();
+  }
+
+  function sealEdition(
+    uint16 seriesId,
+    uint8 editionId
+  ) external override onlySchemaGuard isEditionNotSealed(seriesId, editionId) {
+    uint24 schemaId = Schema.getId(seriesId, editionId);
+    editionsSealedInfo[schemaId] = true;
+
+    emit EditionSealed(seriesId, editionId, schemaId);
+  }
+
+  function unsealEdition(
+    uint16 seriesId,
+    uint8 editionId
+  ) external override onlySchemaGuard isEditionSealed(seriesId, editionId) {
+    uint24 schemaId = Schema.getId(seriesId, editionId);
+    editionsSealedInfo[schemaId] = false;
+
+    emit EditionUnsealed(seriesId, editionId, schemaId);
   }
 
   function _getTraits(
@@ -254,7 +316,7 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
 
   function _addAttribute(
     NFTAttribute calldata attribute
-  ) internal onlySchemaManager isNotSealed {
+  ) internal onlySchemaManager schemaIsNotSealed {
     attributes[attribute.attributeId] = attribute;
     emit AttributeAdded(attribute.attributeId);
   }
@@ -264,7 +326,7 @@ contract NFTSchema is Ownable, AccessControl, INFTSchema {
     uint8 editionId,
     uint16 typeId,
     uint16 attributeId
-  ) internal onlySchemaManager isNotSealed {
+  ) internal onlySchemaManager schemaIsNotSealed {
     uint40 typeSchemaId = Schema.getSchemaTypeId(seriesId, editionId, typeId);
     require(schemaTypes[typeSchemaId].typeId > 0, "Type does not exist");
     require(

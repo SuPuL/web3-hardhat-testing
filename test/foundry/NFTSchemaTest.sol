@@ -4,12 +4,14 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "../../contracts/libraries/Types.sol";
 import "../../contracts/NFTSchema.sol";
+import "../../contracts/interfaces/INFTSchema.sol";
 
 contract NFTSchemaTest is Test {
+  event EditionAdded(uint16 seriesId, uint8 editionId, uint24 schemaId);
+
   using Strings for uint16;
   using Strings for uint8;
 
@@ -33,6 +35,9 @@ contract NFTSchemaTest is Test {
       editionName: string.concat("Edition ", editionId.toString())
     });
 
+    vm.expectEmit(true, true, true, true);
+    emit EditionAdded(seriesId, editionId, (seriesId << 8) | editionId);
+
     nftSchema.addEdition(edition);
     NFTEdition memory retrievedEdition = nftSchema.getEdition(
       seriesId,
@@ -41,5 +46,7 @@ contract NFTSchemaTest is Test {
 
     assertEq(retrievedEdition.seriesId, edition.seriesId);
     assertEq(retrievedEdition.editionId, edition.editionId);
+    assertEq(retrievedEdition.seriesName, edition.seriesName);
+    assertEq(retrievedEdition.editionName, edition.editionName);
   }
 }

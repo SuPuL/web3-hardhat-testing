@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../libraries/Types.sol";
 
-interface INFTDescriptor {
+interface INFTTokenUriProvider {
   function tokenURI(
     uint256 tokenId,
     NFTInstance calldata instance

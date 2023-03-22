@@ -10,13 +10,6 @@ contract NFTProxyRepository is ANFTProxyRepository {
   INFTRepository internal defaultBuildRepository;
   bool internal allowRepositoryOverride;
 
-  function craeteRandom(
-    uint16 seriesId,
-    uint8 editionId
-  ) external view onlyProducer returns (NFTStorageInfo memory) {
-    return getRepository(seriesId, editionId).craeteRandom(seriesId, editionId);
-  }
-
   function create(
     uint16 seriesId,
     uint8 editionId,

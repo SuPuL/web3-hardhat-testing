@@ -2,6 +2,6 @@
     "require": "hardhat/register",
     "timeout": 40000,
     "_": [
-        "tests/ts/**/*.ts"
+        "test/mocha/**/*.test.ts"
     ]
 }

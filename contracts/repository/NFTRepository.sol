@@ -17,14 +17,6 @@ contract NFTRepository is ANFTProxyRepository {
     schema = INFTSchema(_schema);
   }
 
-  function craeteRandom(
-    uint16 seriesId,
-    uint8 editionId
-  ) external view onlyProducer returns (NFTStorageInfo memory) {
-    // @todo implement randomness
-    revert("Not implemented yet");
-  }
-
   function create(
     uint16 seriesId,
     uint8 editionId,
@@ -55,6 +47,11 @@ contract NFTRepository is ANFTProxyRepository {
 
     (uint16 seriesId, uint8 editionId, uint16 typeId) = Schema
       .splitSchemaTypeId(info.typeSchemaId);
+
+    require(
+      schema.supportsTypeInstance(seriesId, editionId, typeId, info.values),
+      "NFT: type not supported"
+    );
 
     NFTDescription memory description = schema.getDescription(
       seriesId,

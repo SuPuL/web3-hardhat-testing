@@ -1,11 +1,12 @@
 import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-foundry";
+// disabled as coverage does not work with both test frameworks integrated
+// import "@nomicfoundation/hardhat-foundry";
 import "dotenv/config";
 import "hardhat-abi-exporter";
-import "hardhat-gas-reporter";
 import "hardhat-log-remover";
 import "hardhat-output-validator";
 import "hardhat-tracer";
+
 import { HardhatUserConfig } from "hardhat/types";
 import { accounts, addForkConfiguration, node_url } from "./utils/networks";
 
@@ -17,7 +18,6 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 1000,
       },
-      viaIR: true,
     },
   },
   gasReporter: {

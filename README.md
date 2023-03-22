@@ -21,16 +21,19 @@ This project is just a playground to get familiar with different aspects of ERC-
   - store static data per type
   - optimize storage handling for statics
   - ✅ add birthday
+  - Add burn support
 - ✅ NFT descriptor tokenUri generation
   - ✅ get assets and static data from type store
   - ✅ merge with instance data
 - NFB support
-  - "random create can only be done with NFB" <- configureable
-  - mint, open
+  - implement NFBs as type of a schema
+  - opening is done externally in a utility contract
+  -
 - Add Basic NFT Repository
-  - add random generation
   - ✅ add airdrop generation
-- Add Example utility contract to burn something and create something new
+- UtilitiesAdd
+  - Example utility contract to burn something and create something new
+  - Implement Random creation based on NFB brun as an external utility
 - Add Helper for FE
   - get all schemas
 - Create some account abstraction example (so that a user can have multiple wallets with n NFTs)
@@ -43,3 +46,10 @@ This project is just a playground to get familiar with different aspects of ERC-
 - Merge Descriptor and Schema? Or other contracts?
 - Store NFT data not in ERC contract?
 - bytes instead of stings?
+
+## Open Questions
+
+- NFTSchema
+  - Rename to NFTSeries?
+  - Move series Info from Edition
+  - Do we need getter for all Series, Edtions, types etc.? Or do we rly on events?

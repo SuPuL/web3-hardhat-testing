@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "./libraries/JSON.sol";
 import "./libraries/Types.sol";
-import "./interfaces/INFTDescriptor.sol";
+import "./interfaces/INFTTokenUriProvider.sol";
 
 struct JSONProp {
   string key;
@@ -18,7 +18,7 @@ struct JSONProp {
 /**
  * @notice add access control
  */
-contract NFTDescriptor is Ownable, AccessControl, INFTDescriptor {
+contract NFTTokenUriProvider is Ownable, AccessControl, INFTTokenUriProvider {
   using Strings for uint16;
   using Strings for uint256;
 

@@ -1,4 +1,3 @@
-import { expect } from "chai";
 import hre from "hardhat";
 import { Contract } from "@ethersproject/contracts";
 
@@ -6,7 +5,7 @@ const baseExternalUrl = "https://base.foobar";
 const imageBaseUrl = "https://image.foobar";
 const assetBaseUrl = "https://asset.foobar";
 
-describe("NFT Contract", () => {
+describe("NFT Collection", () => {
   let nft: Contract;
   let nftSchema: Contract;
 
@@ -37,22 +36,25 @@ describe("NFT Contract", () => {
     const nftRepository = await NFTRepository.deploy(nftSchema.address);
     await nftRepository.deployed();
 
-    const NFTDescriptor = await hre.ethers.getContractFactory("NFTDescriptor", {
-      libraries: { JSON: json.address },
-    });
-    const nftDescriptor = await NFTDescriptor.deploy(
+    const NFTTokenUriProvider = await hre.ethers.getContractFactory(
+      "NFTTokenUriProvider",
+      {
+        libraries: { JSON: json.address },
+      }
+    );
+    const nftTokenUriProvider = await NFTTokenUriProvider.deploy(
       baseExternalUrl,
       imageBaseUrl,
       assetBaseUrl
     );
-    await nftDescriptor.deployed();
+    await nftTokenUriProvider.deployed();
 
-    const NFT = await hre.ethers.getContractFactory("NFT");
+    const NFT = await hre.ethers.getContractFactory("NFTCollection");
     nft = await NFT.deploy(
       "FOO",
       "BAR",
       nftRepository.address,
-      nftDescriptor.address
+      nftTokenUriProvider.address
     );
     await nft.deployed();
 
